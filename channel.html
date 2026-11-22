@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canlı Yayın Oynatıcı</title>
+    <!-- Clappr ve Hlsjs kütüphaneleri -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@clappr/player@0.4.0/dist/clappr.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/level-selector@latest/dist/level-selector.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/p2p-media-loader-core@latest/build/p2p-media-loader-core.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/p2p-media-loader-hlsjs@latest/build/p2p-media-loader-hlsjs.min.js"></script>
+    
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
+        #player-container { width: 100%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; }
+        #player { width: 100%; height: 100%; }
+        .error-message { color: #fff; text-align: center; position: absolute; }
+    </style>
+</head>
+<body>
+
+    <div id="player-container">
+        <div id="player"></div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            baseUrl: 'https://g1b.d72577a9dd0ec74.cfd/',
+            p2pEnabled: true,
+            p2pTrackerUrl: 'wss://p2p-tracker.zp2p1.workers.dev'
+        };
+
+        function getStreamUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            if (!id) return null;
+            if (id.startsWith('http://') || id.startsWith('https://')) return id;
+            return CONFIG.baseUrl + id + '/mono.m3u8';
+        }
+
+        function createP2PEngine() {
+            if (!CONFIG.p2pEnabled || typeof p2pml === 'undefined' || !p2pml.hlsjs) return null;
+            try {
+                const swarmId = new URLSearchParams(window.location.search).get('id') || 'default';
+                return new p2pml.hlsjs.HlsJsP2PEngine({
+                    core: { swarmId: swarmId, announceTrackers: [CONFIG.p2pTrackerUrl] }
+                });
+            } catch (e) {
+                return null;
+            }
+        }
+
+        window.onload = function() {
+            const streamUrl = getStreamUrl();
+            const playerDiv = document.getElementById('player');
+
+            if (!streamUrl) {
+                playerDiv.innerHTML = '<div class="error-message"><h2>Kanal ID belirtilmedi!</h2><p>Örnek: channel.html?id=ss</p></div>';
+                return;
+            }
+
+            var plugins = [];
+            if (typeof HlsjsPlayback !== 'undefined') plugins.push(HlsjsPlayback);
+            if (typeof LevelSelector !== 'undefined') plugins.push(LevelSelector);
+
+            var playerConfig = {
+                source: streamUrl,
+                parentId: '#player',
+                width: '100%',
+                height: '100%',
+                autoPlay: true,
+                mute: false,
+                plugins: plugins,
+                playback: {
+                    playInline: true,
+                    crossOrigin: 'anonymous',
+                    hlsjsConfig: {
+                        enableWorker: true,
+                        lowLatencyMode: true,
+                        // 520 / 403 engelini aşmak için tarayıcı isteklerine doğru Referer/Origin ekleniyor
+                        xhrSetup: function(xhr, url) {
+                            xhr.setRequestHeader('Referer', 'https://taraftarium1089.xyz/');
+                            xhr.setRequestHeader('Origin', 'https://taraftarium1089.xyz/');
+                        }
+                    }
+                }
+            };
+
+            var p2pEngine = createP2PEngine();
+            if (p2pEngine) {
+                Object.assign(playerConfig.playback.hlsjsConfig, p2pEngine.getConfigForHlsJs());
+            }
+
+            var player = new Clappr.Player(playerConfig);
+
+            if (p2pEngine) {
+                p2pEngine.bindHls(function () {
+                    return player.core && player.core.activePlayback && player.core.activePlayback._hls;
+                });
+            }
+        };
+    </script>
+
+</body>
+</html>
