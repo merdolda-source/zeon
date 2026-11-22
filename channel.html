@@ -77,12 +77,7 @@
                     crossOrigin: 'anonymous',
                     hlsjsConfig: {
                         enableWorker: true,
-                        lowLatencyMode: true,
-                        // 520 / 403 engelini aşmak için tarayıcı isteklerine doğru Referer/Origin ekleniyor
-                        xhrSetup: function(xhr, url) {
-                            xhr.setRequestHeader('Referer', 'https://taraftarium1089.xyz/');
-                            xhr.setRequestHeader('Origin', 'https://taraftarium1089.xyz/');
-                        }
+                        lowLatencyMode: true
                     }
                 }
             };
